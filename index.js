@@ -1,114 +1,92 @@
 const axios = require('axios');
-
+const { off } = require('process');
+const MusicBrainzApi = require('musicbrainz-api').MusicBrainzApi;
 require('dotenv').config();
 
 // global vars
-let dateNow = new Date()
-let yearNow = dateNow.getFullYear();
-let monthNow = dateNow.getMonth() + 1;
-let dayNow = dateNow.getDate();
-let pfpSwap = true;
-let releases = [];
-let releaseCount = 5600;
-let posts = [];
+var now = new Date();
+var nowDate = now.getDate() < 10 ? `0${now.getDate()}` : now.getDate();
+var nowMonth = now.getMonth() + 1 < 10 ? `0${now.getMonth() + 1}` : now.getMonth() + 1;
+var nowDayMonth = `${nowMonth}-${nowDate}`;
+var releases = [];
+var releaseCount = 0;
 
 //.env vals
-let mb_baseUrl = process.env.MB_BASE;
-let mb_userAgent = process.env.MB_USER_AGENT;
-let mb_query = encodeURIComponent(process.env.MB_QUERY);
-let mb_url = `${mb_baseUrl}/release-group?query=${mb_query}&limit=100&offset=`
+ 
 
-console.log(mb_url);
+const mbApi = new MusicBrainzApi({
+    appName: 'EmoAnniversary',
+    appVersion: '2.0.1',
+    appContactInfo: 'https://www.twitter.com/emoanniversary'
+});
 
-async function getReleases(offset) {
-    console.log(`${offset} of ${releaseCount}`);
-    try {
-        const response = await axios.get(mb_url + offset,
-            {
-                headers: {
-                    'User-Agent': mb_userAgent,
-                    'Accept': 'application/json'
+/// Utility functions
+function delay(time) {
+    return new Promise(resolve => setTimeout(resolve, time));
+}
+
+/// This is a first, initial call which collects the first sweep of data, as well as useful data such as the count of albums.
+async function gatherReleaseGroups(offset = 0) {
+    await mbApi.searchReleaseGroup({query: 'tag:emo AND NOT primarytype:single OR NOT secondarytype:soundtrack OR NOT secondarytype:live', limit: 100, offset: offset})
+    .then(
+        (res) => {
+            releaseCount = res.count;
+            for (let index = 0; index < res['release-groups'].length; index++) {
+                if (res['release-groups'][index]['first-release-date'].endsWith(nowDayMonth) 
+                    && res['release-groups'][index]['first-release-date'].length > 9
+                    && !res['release-groups'][index]['first-release-date'].endsWith(now.getFullYear())) {
+                    releases.push(res['release-groups'][index]);
                 }
-            });
-        releaseCount = response.data.count;
-        await response.data['release-groups'].forEach(element => {
-            let dateCheck = monthNow + '-' + dayNow;
-            let releaseDate = element['first-release-date'];
-            if (releaseDate && releaseDate.endsWith(dateCheck)) {
-                releases.push(element);
             }
-        });
-        console.log(releases.length);
-    } catch (error) {
-        console.log(error);
+    }).catch((err) => {
+
+    });
+}
+
+async function delayLoop() {
+    for (let indexOffset = 0; indexOffset <= releaseCount; indexOffset = indexOffset+100) {
+        console.log('searching offset ' + indexOffset);
+        gatherReleaseGroups(indexOffset);
+        console.log('releases now: ' + releases.length);
+        await delay(1000);
     }
 }
 
-async function setCount() { await getReleases(0) };
-
-setCount();
-
-async function collection() {
-    for (let index = 100; index <= 1000; index = index + 100) {
-        getReleases(index);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-    setPosts(releases);
-}
-
-async function setPosts(releases) {
-    for (const release of releases) {
-        let artistString;
-        let albumArt;
-        try {
-            await axios.get('http://coverartarchive.org/release-group/' + release.id)
-                .then((response) => {
-                    let images = response.images[0];
-                    if (images['thumbnails']['500']) {
-                        albumArt = images['thumbnails']['500'];
-                    }
-                    else if (images['thumbnails']['250']) {
-                        albumArt = images['thumbnails']['250']
-                    }
-                    else if (images['image']) {
-                        albumArt = images['image']
-                    }
-
-                }).catch((err) => {
-                    if (err.response.status == 404) {
-                        albumArt = '';
-                    }
-                    else if (err.response.status == 429) {
-                        setTimeout(setPosts, 10000, releases);
-                    }
-                });
-            let artistCollection = release['artist-credit'];
-            artistString = artistCollection[0].name;
-            if (artistCollection.length > 1) {
-                for (const artist in artistCollection) {
-                    if (artist.index == artistCollection.length) {
-                        artistString += artist.name;
-                    } else {
-                        artistString += artist.name + ', ';
-                    }
-                }
-                if (artistString.length > 100) {
-                    artistString = 'Multiple Artists. See the release link for more information.'
-                }
+function cleanAnniversaryReleases() {
+    let cleanReleases = [];
+    for (let index = 0; index < releases.length; index++) {
+        let artists = [];
+        for (let artistIndex = 0; artistIndex < releases[index]['artist-credit'].length; artistIndex++) {
+            if (!artists.includes(releases[index]['artist-credit'][artistIndex]['name'])) {
+                artists.push(releases[index]['artist-credit'][artistIndex]['name']);
             }
-            posts.push({
-                title: release['title'],
-                artists: artistString,
-                releaseDate: release['first-release-date'],
-                cover: albumArt
-            })
-        } catch (error) {
-            console.log(error)
         }
-    }
 
-    console.log(posts);
+        let age = now.getFullYear() - new Date(releases[index]['first-release-date']).getFullYear();
+
+        
+        cleanReleases.push({
+            'id': releases[index]['id'],
+            'title': releases[index]['title'],
+            'releaseDate': releases[index]['first-release-date'],
+            'age': age,
+            'artistCredit': artists.toString()
+        })
+    }
+    releases = cleanReleases;
+    console.log(releases[0]);
 }
 
-collection();
+/// Program Flow
+async function programHandler() {
+    await gatherReleaseGroups();
+    console.log(releaseCount);
+    await delayLoop();
+    cleanAnniversaryReleases();
+}
+
+programHandler();
+
+
+
 
