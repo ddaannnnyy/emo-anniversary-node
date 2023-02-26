@@ -13,6 +13,4 @@ A node rewrite of twitter.com/emoanniversary
     * Send Tweet
 
 ## TODO
-collect the release album cover
-prevent duplicate releases from being added to collection
-post to twitter
+ * Enable profile picture swap, changing the account profile picture to the first album published daily.
