@@ -11,6 +11,7 @@ var nowDayMonth = `${nowMonth}-${nowDate}`;
 var releases = [];
 var cleanReleases = [];
 var releaseCount = 0;
+var pfpswap = true;
 
 //.env vals
 var twitterAppKey = process.env.TWITTER_APP_KEY;
@@ -132,6 +133,11 @@ async function postTweets() {
             await twitterClient.v1.tweet(tweetBody, {media_ids:cleanReleases[index]['mediaId']}).catch(async (err) => {
                 await twitterClient.v1.tweet(tweetBody);
             });
+            if (pfpswap) {
+                await twitterClient.v1.updateAccountProfileImage(cleanReleases[index]['cover']).then((res) => {
+                    pfpswap = false;
+                });
+            }
         } else {
             await twitterClient.v1.tweet(tweetBody);
         }
@@ -149,7 +155,7 @@ async function programHandler() {
     
 }
 
-await programHandler().then(process.exit());
+programHandler();
 
 
 
