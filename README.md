@@ -13,4 +13,4 @@ A node rewrite of twitter.com/emoanniversary
     * Send Tweet
 
 ## TODO
- * Enable profile picture swap, changing the account profile picture to the first album published daily.
+ * Test size of album art image when above twitter threshold (5MB). Refetch smaller image file for covers. Currently the media is abandoned and the post is made without an image attached.
