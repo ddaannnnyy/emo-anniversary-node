@@ -150,13 +150,17 @@ async function postTweets() {
 
 /// Program Flow
 async function programHandler() {
-    await gatherReleaseGroups(); // sets first collection of albums and fetches the total count of albums returned by search. Adds albums with MM-DD matching today to an array of releases.
-    await delayLoop(); // futher fetches releases by incrementing the offset of the call until the all of the pagination of the release count has been handled. Continues to add valid releases to array of releases.
-    await cleanAnniversaryReleases(); // re-sorts the data into a cleaner collection of information, reduces un-needed information, and fetches artist information.
-    await fetchCoverArt(cleanReleases); // fetches cover art as ArrayBuffers.
-    await uploadMedia(); // uploads available media to twitter, returns a mediaid which is then assigned to an album to be attached to the tweet.
-    await postTweets(); // posts formatted tweets for each release.
+    try {
+        await gatherReleaseGroups(); // sets first collection of albums and fetches the total count of albums returned by search. Adds albums with MM-DD matching today to an array of releases.
+        await delayLoop(); // futher fetches releases by incrementing the offset of the call until the all of the pagination of the release count has been handled. Continues to add valid releases to array of releases.
+        await cleanAnniversaryReleases(); // re-sorts the data into a cleaner collection of information, reduces un-needed information, and fetches artist information.
+        await fetchCoverArt(cleanReleases); // fetches cover art as ArrayBuffers.
+        await uploadMedia(); // uploads available media to twitter, returns a mediaid which is then assigned to an album to be attached to the tweet.
+        await postTweets(); // posts formatted tweets for each release.
 
+    } catch (error) {
+        console.log(error);
+    }
 }
 
 programHandler();
