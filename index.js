@@ -28,7 +28,7 @@ const twitterClient = new TwitterApi({
 
 const mbApi = new MusicBrainzApi({
     appName: 'EmoAnniversary',
-    appVersion: '2.0.1',
+    appVersion: '2.0.2',
     appContactInfo: 'https://www.twitter.com/emoanniversary'
 });
 
@@ -39,7 +39,7 @@ function delay(time) {
 
 /// This is a first, initial call which collects the first sweep of data, as well as useful data such as the count of albums.
 async function gatherReleaseGroups(offset = 0) {
-    await mbApi.searchReleaseGroup({ query: 'tag:emo NOT primarytype:single NOT secondarytype:soundtrack NOT secondarytype:live', limit: 100, offset: offset })
+    await mbApi.searchReleaseGroup({ query: 'tag:emo', limit: 100, offset: offset })
         .then(
             (res) => {
                 releaseCount = res.count;
