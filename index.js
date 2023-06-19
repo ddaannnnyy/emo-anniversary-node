@@ -7,7 +7,7 @@ require('dotenv').config();
 var now = new Date();
 var nowDate = now.getDate() < 10 ? `0${now.getDate()}` : now.getDate();
 var nowMonth = now.getMonth() + 1 < 10 ? `0${now.getMonth() + 1}` : now.getMonth() + 1;
-var nowDayMonth = `${nowMonth}-${nowDate - 1}`;
+var nowDayMonth = `${nowMonth}-${nowDate}`;
 var releases = [];
 var cleanReleases = [];
 var releaseCount = 0;
