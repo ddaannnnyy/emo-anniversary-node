@@ -7,7 +7,7 @@ require('dotenv').config();
 var now = new Date();
 var nowDate = now.getDate() < 10 ? `0${now.getDate()}` : now.getDate();
 var nowMonth = now.getMonth() + 1 < 10 ? `0${now.getMonth() + 1}` : now.getMonth() + 1;
-var nowDayMonth = `${nowMonth}-${nowDate}`;
+var nowDayMonth = `${nowMonth}-${nowDate - 1}`;
 var releases = [];
 var cleanReleases = [];
 var releaseCount = 0;
@@ -28,7 +28,7 @@ const twitterClient = new TwitterApi({
 
 const mbApi = new MusicBrainzApi({
     appName: 'EmoAnniversary',
-    appVersion: '2.0.2',
+    appVersion: '2.0.3',
     appContactInfo: 'https://www.twitter.com/emoanniversary'
 });
 
@@ -129,22 +129,24 @@ async function uploadMedia() {
 async function postTweets() {
     let postedTweets = [];
     for (let index = 0; index < cleanReleases.length; index++) {
+        console.log(cleanReleases[index]);
         if (!postedTweets.includes(cleanReleases[index]['id'])) {
             let tweetBody = `${cleanReleases[index]['title']} by ${cleanReleases[index]['artistCredit']} is now ${cleanReleases[index]['age']}!\r\nIt was first released on ${new Date(cleanReleases[index]['releaseDate']).toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' }).toString()}`;
             if (cleanReleases[index]['mediaId']) {
-                await twitterClient.v1.tweet(tweetBody, { media_ids: cleanReleases[index]['mediaId'] }).catch(async (err) => {
-                    await twitterClient.v1.tweet(tweetBody);
+                await twitterClient.v2.tweet(tweetBody, { media: {media_ids: [cleanReleases[index]['mediaId']]} }).catch(async (err) => {
+                    await twitterClient.v2.tweet(tweetBody);
                 });
                 if (pfpswap) {
-                    await twitterClient.v1.updateAccountProfileImage(cleanReleases[index]['cover']).then((res) => {
+                    const result = await twitterClient.v1.updateAccountProfileImage(cleanReleases[index]['cover']).then((res) => {
                         pfpswap = false;
                     });
                 }
             } else {
-                await twitterClient.v1.tweet(tweetBody);
+                await twitterClient.v2.tweet(tweetBody);
             }
             postedTweets.push(cleanReleases[index]['id']);
         }
+        await delay(30000);
     }
 }
 
@@ -164,6 +166,5 @@ async function programHandler() {
 }
 
 programHandler();
-
 
 
