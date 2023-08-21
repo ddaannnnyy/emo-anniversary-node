@@ -1,6 +1,7 @@
 const axios = require("axios");
 const MusicBrainzApi = require("musicbrainz-api").MusicBrainzApi;
 const { TwitterApi } = require("twitter-api-v2");
+const puppeteer = require("puppeteer");
 require("dotenv").config();
 
 // global vars
@@ -9,6 +10,7 @@ var nowDate = now.getDate() < 10 ? `0${now.getDate()}` : now.getDate();
 var nowMonth =
   now.getMonth() + 1 < 10 ? `0${now.getMonth() + 1}` : now.getMonth() + 1;
 var nowDayMonth = `${nowMonth}-${nowDate}`;
+console.log(nowDayMonth);
 var releases = [];
 var cleanReleases = [];
 var releaseCount = 0;
@@ -29,7 +31,7 @@ const twitterClient = new TwitterApi({
 
 const mbApi = new MusicBrainzApi({
   appName: "EmoAnniversary",
-  appVersion: "2.0.3",
+  appVersion: "2.1.0",
   appContactInfo: "https://www.twitter.com/emoanniversary",
 });
 
@@ -52,7 +54,8 @@ async function gatherReleaseGroups(offset = 0) {
           res["release-groups"][index]["first-release-date"].length > 9 &&
           !res["release-groups"][index]["first-release-date"].endsWith(
             now.getFullYear()
-          )
+          ) &&
+          res["release-groups"][index]["primary-type"] != "Single"
         ) {
           releases.push(res["release-groups"][index]);
         }
@@ -89,7 +92,17 @@ async function cleanAnniversaryReleases() {
             releases[index]["artist-credit"][artistIndex]["name"]
           )
         ) {
-          artists.push(releases[index]["artist-credit"][artistIndex]["name"]);
+          const twitterHandle = await returnTwitterHandle(
+            releases[index]["artist-credit"][artistIndex]["artist"]["id"]
+          );
+          artists.push(
+            `${releases[index]["artist-credit"][artistIndex]["name"]}${twitterHandle}`
+          );
+          if (releases[index]["artist-credit"][artistIndex]["joinphrase"]) {
+            artists.push(
+              releases[index]["artist-credit"][artistIndex]["joinphrase"]
+            );
+          }
         }
       }
     } catch (error) {
@@ -109,6 +122,29 @@ async function cleanAnniversaryReleases() {
   }
 }
 
+async function returnTwitterHandle(id) {
+  let pageUrl = `https://musicbrainz.org/artist/${id}`;
+
+  // fetch twitter handle
+  const browser = await puppeteer.launch({
+    headless: "new",
+  });
+  const page = await browser.newPage();
+  await page.goto(pageUrl);
+
+  const twitterLinkElement = await page.$(".twitter-favicon a");
+  const twitterHandle = await page.evaluate(
+    (el) => el.innerText,
+    twitterLinkElement
+  );
+
+  await browser.close();
+  await delay(1000);
+
+  const suppliedHandle = twitterHandle ? ` (${twitterHandle})` : null;
+  return suppliedHandle;
+}
+
 async function fetchCoverArt(releases) {
   for (let index = 0; index < releases.length; index++) {
     axios
@@ -123,18 +159,15 @@ async function fetchCoverArt(releases) {
           url = res.data.images[0]["image"];
         }
 
-                const config = { responseType: 'arraybuffer' };
-                await axios.get(url, config)
-                    .then((res) => {
-                        let imageBuffer = Buffer.from(res.data);
-                        // releases[index]['cover'] = Uint8Array.from(imageBuffer).buffer;
-                        if (imageBuffer.byteLength <= 5242800) {
-                            releases[index]['cover'] = imageBuffer;
-                        }
-                        
-                    });
-            })
-            .catch((err) => {})
+        const config = { responseType: "arraybuffer" };
+        await axios.get(url, config).then((res) => {
+          let imageBuffer = Buffer.from(res.data);
+          if (imageBuffer.byteLength <= 5242800) {
+            releases[index]["cover"] = imageBuffer;
+          }
+        });
+      })
+      .catch((err) => {});
 
     await delay(1000);
   }
@@ -198,6 +231,36 @@ async function postTweets() {
   }
 }
 
+async function debugTweets() {
+  if (cleanReleases.length == 0) {
+    const tweet = await twitterClient.v2.tweet(
+      "No releases today ):\r\nThrow what you're currently listening to in the comments.\r\nHave I missed one? Make sure to add the 'emo' tag on music-brainz.org and I'll nab it next year :)"
+    );
+  }
+  let postedTweets = [];
+  for (let index = 0; index < cleanReleases.length; index++) {
+    if (!postedTweets.includes(cleanReleases[index]["id"])) {
+      let tweetBody = `${cleanReleases[index]["title"]} by ${
+        cleanReleases[index]["artistCredit"]
+      } is now ${
+        cleanReleases[index]["age"]
+      }!\r\nIt was first released on ${new Date(
+        cleanReleases[index]["releaseDate"]
+      )
+        .toLocaleDateString("en-AU", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+        .toString()}`;
+
+      console.log(tweetBody);
+
+      postedTweets.push(cleanReleases[index]["id"]);
+    }
+  }
+}
+
 /// Program Flow
 async function programHandler() {
   try {
@@ -206,6 +269,7 @@ async function programHandler() {
     await cleanAnniversaryReleases(); // re-sorts the data into a cleaner collection of information, reduces un-needed information, and fetches artist information.
     await fetchCoverArt(cleanReleases); // fetches cover art as ArrayBuffers.
     await uploadMedia(); // uploads available media to twitter, returns a mediaid which is then assigned to an album to be attached to the tweet.
+    // await debugTweets();
     await postTweets(); // posts formatted tweets for each release.
   } catch (error) {
     console.log(error);
