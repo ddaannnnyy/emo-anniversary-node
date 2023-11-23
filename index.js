@@ -2,6 +2,7 @@ const axios = require("axios");
 const MusicBrainzApi = require("musicbrainz-api").MusicBrainzApi;
 const { TwitterApi } = require("twitter-api-v2");
 const puppeteer = require("puppeteer");
+const functions = require("@google-cloud/functions-framework");
 require("dotenv").config();
 
 // global vars
@@ -276,4 +277,7 @@ async function programHandler() {
   }
 }
 
-programHandler();
+// google cloud functions runner
+functions.http("helloHttp", (req, res) => {
+  programHandler();
+});
