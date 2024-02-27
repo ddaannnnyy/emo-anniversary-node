@@ -185,11 +185,6 @@ async function uploadMedia() {
 }
 
 async function postTweets() {
-  if (cleanReleases.length == 0) {
-    const tweet = await twitterClient.v2.tweet(
-      "No releases today ):\r\nThrow what you're currently listening to in the comments.\r\nHave I missed one? Make sure to add the 'emo' tag on music-brainz.org and I'll nab it next year :)"
-    );
-  }
   let postedTweets = [];
   for (let index = 0; index < cleanReleases.length; index++) {
     console.log(cleanReleases[index]);
@@ -232,11 +227,6 @@ async function postTweets() {
 }
 
 async function debugTweets() {
-  if (cleanReleases.length == 0) {
-    const tweet = await twitterClient.v2.tweet(
-      "No releases today ):\r\nThrow what you're currently listening to in the comments.\r\nHave I missed one? Make sure to add the 'emo' tag on music-brainz.org and I'll nab it next year :)"
-    );
-  }
   let postedTweets = [];
   for (let index = 0; index < cleanReleases.length; index++) {
     if (!postedTweets.includes(cleanReleases[index]["id"])) {
@@ -252,7 +242,9 @@ async function debugTweets() {
           month: "long",
           day: "numeric",
         })
-        .toString()}`;
+        .toString()}
+        \r\nHere is the full object\r\n
+        ${JSON.stringify(cleanReleases[index])}`;
 
       console.log(tweetBody);
 
@@ -269,8 +261,8 @@ async function programHandler() {
     await cleanAnniversaryReleases(); // re-sorts the data into a cleaner collection of information, reduces un-needed information, and fetches artist information.
     await fetchCoverArt(cleanReleases); // fetches cover art as ArrayBuffers.
     await uploadMedia(); // uploads available media to twitter, returns a mediaid which is then assigned to an album to be attached to the tweet.
-    // await debugTweets();
-    await postTweets(); // posts formatted tweets for each release.
+    await debugTweets();
+    // await postTweets(); // posts formatted tweets for each release.
   } catch (error) {
     console.log(error);
   }
