@@ -3,7 +3,7 @@
     "axios": "^0.28.0",
     "dotenv": "^16.0.2",
     "musicbrainz-api": "^0.10.2",
-    "puppeteer": "^20.9.0",
+    "puppeteer": "^24.1.0",
     "twitter-api-v2": "^1.14.2"
   }
 }
